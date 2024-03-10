@@ -32,7 +32,8 @@ def sendMessageToRespQueue(s3_file_name,result):
         QueueUrl=resp_queue_url,
         MessageBody=message_body
     )
-    print(f"Message sent to response queue successfully. Message ID: {response['MessageId']}, Message: {response}")
+    print(message_body)
+    print(f"Message sent to response queue successfully. Message ID: {response['MessageId']}")
 
 
 def uploadToS3(s3_file_name,result):
