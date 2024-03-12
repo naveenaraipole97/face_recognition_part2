@@ -25,7 +25,7 @@ def setup_logging():
             datefmt='%Y-%m-%d %H:%M:%S')
 
         # Check if running on EC2 (assuming you've set up this check)
-        if 'EC2_METADATA_SERVICE' in os.environ:
+        if 'HOSTNAME' in os.environ and 'ec2' in os.environ['HOSTNAME']:
             # Running on EC2, log to a file
             log_file = '/home/ec2-user/applogs.log'
             file_handler = logging.FileHandler(log_file)
