@@ -27,7 +27,7 @@ def setup_logging():
         # Check if running on EC2 (assuming you've set up this check)
         if 'HOSTNAME' in os.environ and 'ec2' in os.environ['HOSTNAME']:
             logging.info("Running on EC2, log to a file")
-            log_file = '/home/ec2-user/applogs.log'
+            log_file = '/tmp/applogs.log'
             file_handler = logging.FileHandler(log_file)
             file_handler.setLevel(logging.INFO)
             formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
