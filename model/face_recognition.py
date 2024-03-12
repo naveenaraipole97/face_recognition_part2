@@ -1,6 +1,7 @@
 __copyright__   = "Copyright 2024, VISA Lab"
 __license__     = "MIT"
 
+import logging
 import os
 import csv
 import sys
@@ -13,6 +14,29 @@ import boto3
 from io import BytesIO
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, EndpointConnectionError
 
+
+def setup_logging():
+    # Check if handlers are already attached
+    if not logging.getLogger().hasHandlers():
+        # Set the log level to INFO (adjust as needed)
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-8s %(message)s',
+            level=logging.INFO,
+            datefmt='%Y-%m-%d %H:%M:%S')
+
+        # Check if running on EC2 (assuming you've set up this check)
+        if 'EC2_METADATA_SERVICE' in os.environ:
+            # Running on EC2, log to a file
+            log_file = '/home/ec2-user/applogs.log'
+            file_handler = logging.FileHandler(log_file)
+            file_handler.setLevel(logging.INFO)
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            file_handler.setFormatter(formatter)
+            logging.getLogger().addHandler(file_handler)
+
+
+setup_logging()
+
 mtcnn = MTCNN(image_size=240, margin=0, min_face_size=20) # initializing mtcnn for face detection
 resnet = InceptionResnetV1(pretrained='vggface2').eval() # initializing resnet for face img to embeding conversion
 # test_image = sys.argv[1]
@@ -24,7 +48,7 @@ in_bucket_name='1228052438-in-bucket'
 out_bucket_name='1228052438-out-bucket'
 
 sqs=boto3.client('sqs',region_name='us-east-1')
-s3=boto3.client('s3',region_name='us-east-1')
+s3=boto3.client('s3')
 
 def sendMessageToRespQueue(s3_file_name,result):
     message_body=s3_file_name+':'+result
@@ -32,17 +56,17 @@ def sendMessageToRespQueue(s3_file_name,result):
         QueueUrl=resp_queue_url,
         MessageBody=message_body
     )
-    print(message_body)
-    print(f"Message sent to response queue successfully. Message ID: {response['MessageId']}")
+    logging.info(message_body)
+    logging.info(f"Message sent to response queue successfully. Message ID: {response['MessageId']}")
 
 
 def uploadToS3(s3_file_name,result):
     try:
         s3.put_object(Bucket=out_bucket_name, Key=s3_file_name, Body=result)
-        print(f'response uploaded to S3 Successfully to {s3_file_name}')
+        logging.info(f'response uploaded to S3 Successfully to {s3_file_name}')
         sendMessageToRespQueue(s3_file_name,result)
     except NoCredentialsError:
-        print('Credentials Not Available')
+        logging.info('Credentials Not Available')
 
 
 def face_match(image_data, data_path): # img_path= location of photo, data_path= location of data.pt
@@ -67,7 +91,7 @@ def face_match(image_data, data_path): # img_path= location of photo, data_path=
     return (name_list[idx_min], min(dist_list))
 
 # result = face_match(test_image, 'data.pt')
-# print(result[0])
+# logging.info(result[0])
 
 def process_images():
     try:
@@ -89,9 +113,9 @@ def process_images():
     
             if messages:
                 for message in messages:
-                    print(f"Received message: Message body {message['Body']}")
+                    logging.info(f"Received message: Message body {message['Body']}")
                     s3_file_path=message['Body']
-                    print(s3_file_path)
+                    logging.info(s3_file_path)
     
                     response=s3.get_object(Bucket=in_bucket_name,Key=s3_file_path)
                     image_data=response['Body'].read();
@@ -100,7 +124,7 @@ def process_images():
                     s3_file_name, extension=os.path.splitext(s3_file_path)
                     uploadToS3(s3_file_name,result[0])
                     
-                    print(result)
+                    logging.info(result)
     
                     receipt_handle=message['ReceiptHandle']
                     sqs.delete_message(
@@ -108,16 +132,16 @@ def process_images():
                         ReceiptHandle=receipt_handle
                     )
             else:
-                print("No messages received. Waiting for messages...")
+                logging.info("No messages received. Waiting for messages...")
     
     except NoCredentialsError:
-        print("Credentials not available. Please provide valid AWS credentials.")
+        logging.info("Credentials not available. Please provide valid AWS credentials.")
     except PartialCredentialsError:
-        print("Partial credentials provided. Please provide valid AWS credentials.")
+        logging.info("Partial credentials provided. Please provide valid AWS credentials.")
     except EndpointConnectionError:
-        print("Error connecting to the SQS endpoint. Please check your network connectivity or endpoint configuration.")
+        logging.info("Error connecting to the SQS endpoint. Please check your network connectivity or endpoint configuration.")
     except Exception as e:
-        print(f"An error occurred: {str(e)}")
+        logging.exception(f"An error occurred: {str(e)}")
         
     
 
@@ -125,4 +149,4 @@ if __name__ == "__main__":
     try:
         process_images()
     except KeyboardInterrupt:
-        print("Terminated by user")
+        logging.info("Terminated by user")
