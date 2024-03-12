@@ -23,8 +23,8 @@ resp_queue_url='https://sqs.us-east-1.amazonaws.com/637423171832/1228052438-resp
 in_bucket_name='1228052438-in-bucket'
 out_bucket_name='1228052438-out-bucket'
 
-sqs=boto3.client('sqs')
-s3=boto3.client('s3')
+sqs=boto3.client('sqs',region_name='us-east-1')
+s3=boto3.client('s3',region_name='us-east-1')
 
 def sendMessageToRespQueue(s3_file_name,result):
     message_body=s3_file_name+':'+result
