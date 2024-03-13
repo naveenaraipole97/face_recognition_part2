@@ -105,7 +105,7 @@ def process_images():
                     'All'
                 ],
                 MaxNumberOfMessages=1,
-                VisibilityTimeout=900,
+                VisibilityTimeout=10,
                 WaitTimeSeconds=20
             )
     
