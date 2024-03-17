@@ -16,37 +16,21 @@ from io import BytesIO
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError, EndpointConnectionError
 
 
-def setup_logging():
-    # Check if handlers are already attached
-    if not logging.getLogger().hasHandlers():
-        # Set the log level to INFO (adjust as needed)
-        logging.basicConfig(
+
+logging.basicConfig(
             format='%(asctime)s %(levelname)-8s %(message)s',
             level=logging.INFO,
             datefmt='%Y-%m-%d %H:%M:%S')
-
-        # Check if running on EC2 (assuming you've set up this check)
-        if 'HOSTNAME' in os.environ and 'ec2' in os.environ['HOSTNAME']:
-            logging.info("Running on EC2, log to a file")
-            log_file = '/tmp/applogs.log'
-            file_handler = logging.FileHandler(log_file)
-            file_handler.setLevel(logging.INFO)
-            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-            file_handler.setFormatter(formatter)
-            logging.getLogger().addHandler(file_handler)
-
-
-setup_logging()
 
 mtcnn = MTCNN(image_size=240, margin=0, min_face_size=20) # initializing mtcnn for face detection
 resnet = InceptionResnetV1(pretrained='vggface2').eval() # initializing resnet for face img to embeding conversion
 # test_image = sys.argv[1]
 
-req_queue_url='https://sqs.us-east-1.amazonaws.com/637423171832/1228052438-req-queue'
-resp_queue_url='https://sqs.us-east-1.amazonaws.com/637423171832/1228052438-resp-queue'
+req_queue_url='https://sqs.us-east-1.amazonaws.com/905418031675/1228052438-req-queue'
+resp_queue_url='https://sqs.us-east-1.amazonaws.com/905418031675/1228052438-resp-queue'
 
-in_bucket_name='1228052438-in-bucket'
-out_bucket_name='1228052438-out-bucket'
+in_bucket_name='1228052438-in-bucket-1'
+out_bucket_name='1228052438-out-bucket-1'
 
 sqs=boto3.client('sqs',region_name='us-east-1')
 s3=boto3.client('s3')
@@ -111,8 +95,8 @@ def process_images():
                 MessageAttributeNames=[
                     'All'
                 ],
-                MaxNumberOfMessages=1,
-                VisibilityTimeout=10,
+                MaxNumberOfMessages=10,
+                VisibilityTimeout=20,
                 WaitTimeSeconds=20
             )
     
@@ -138,18 +122,20 @@ def process_images():
                     logging.info(result)
 
                     fileName, extension=os.path.splitext(file_name)
-
+                    
                     sendMessageToRespQueue(fileName,result[0])
 
-                    uploadResultToS3(fileName,result[0])
-
-                    uploadImageToS3(file_name,image_byte_array)
-                    
                     receipt_handle=message['ReceiptHandle']
                     sqs.delete_message(
                         QueueUrl=req_queue_url,
                         ReceiptHandle=receipt_handle
                     )
+
+                    uploadResultToS3(fileName,result[0])
+
+                    uploadImageToS3(file_name,image_byte_array)
+                    
+                    
             else:
                 logging.info("No messages received. Waiting for messages...")
     
