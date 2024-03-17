@@ -97,7 +97,7 @@ def process_images():
                 ],
                 MaxNumberOfMessages=10,
                 VisibilityTimeout=20,
-                WaitTimeSeconds=20
+                WaitTimeSeconds=1
             )
     
             messages = response.get('Messages',[])
